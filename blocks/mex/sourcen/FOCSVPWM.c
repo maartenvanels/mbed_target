@@ -1,13 +1,13 @@
 /* Copyright 2010 The MathWorks, Inc. */
 /*
- *   UART_serialRead.c Simple C-MEX S-function for function call.
+ *   digitalOutput.c Simple C-MEX S-function for function call.
  *
  */
 
 /*
  * Must specify the S_FUNCTION_NAME as the name of the S-function.
  */
-#define S_FUNCTION_NAME                UART_serialRead
+#define S_FUNCTION_NAME                FOCSVPWM
 #define S_FUNCTION_LEVEL               2
 
 /*
@@ -37,16 +37,16 @@ static bool IsRealMatrix(const mxArray * const m);
 static void mdlCheckParameters(SimStruct *S)
 {
   /*
-   * Check the parameter 1 (sample time)
+   * Check the parameter 0 (sample time)
    */
   if EDIT_OK(S, 0) {
-    const double *sampleTime = NULL;
+    const double * sampleTime = NULL;
     const size_t stArraySize = mxGetM(SAMPLE_TIME) * mxGetN(SAMPLE_TIME);
 
     /* Sample time must be a real scalar value or 2 element array. */
     if (IsRealMatrix(SAMPLE_TIME) &&
         (stArraySize == 1 || stArraySize == 2) ) {
-      sampleTime = (real_T *) mxGetPr(SAMPLE_TIME);
+      sampleTime = mxGetPr(SAMPLE_TIME);
     } else {
       ssSetErrorStatus(S,
                        "Invalid sample time. Sample time must be a real scalar value or an array of two real values.");
@@ -81,6 +81,7 @@ static void mdlCheckParameters(SimStruct *S)
   }
 }
 
+
 #endif
 
 /* Function: mdlInitializeSizes ===========================================
@@ -91,7 +92,7 @@ static void mdlCheckParameters(SimStruct *S)
 static void mdlInitializeSizes(SimStruct *S)
 {
   /* Number of expected parameters */
-  ssSetNumSFcnParams(S, 3);
+  ssSetNumSFcnParams(S, 1);
 
 #if defined(MATLAB_MEX_FILE)
 
@@ -115,8 +116,6 @@ static void mdlInitializeSizes(SimStruct *S)
 
   /* Set the parameter's tunable status */
   ssSetSFcnParamTunable(S, 0, 0);
-  ssSetSFcnParamTunable(S, 1, 0);
-  ssSetSFcnParamTunable(S, 2, 0);
 
   ssSetNumPWork(S, 0);
 
@@ -126,35 +125,67 @@ static void mdlInitializeSizes(SimStruct *S)
   /*
    * Set the number of input ports.
    */
-  if (!ssSetNumInputPorts(S, 0))
+  if (!ssSetNumInputPorts(S, 2))
     return;
+
+  /*
+   * Configure the input port 1
+   */
+  ssSetInputPortDataType(S, 0, SS_DOUBLE);
+  ssSetInputPortWidth(S, 0, 1);
+  ssSetInputPortComplexSignal(S, 0, COMPLEX_NO);
+  ssSetInputPortDirectFeedThrough(S, 0, 1);
+  ssSetInputPortAcceptExprInRTW(S, 0, 1);
+  ssSetInputPortOverWritable(S, 0, 1);
+  ssSetInputPortOptimOpts(S, 0, SS_REUSABLE_AND_LOCAL);
+  ssSetInputPortRequiredContiguous(S, 0, 1);
+  
+  /*
+   * Configure the input port 2
+   */
+  ssSetInputPortDataType(S, 1, SS_DOUBLE);
+  ssSetInputPortWidth(S, 1, 1);
+  ssSetInputPortComplexSignal(S, 1, COMPLEX_NO);
+  ssSetInputPortDirectFeedThrough(S, 1, 1);
+  ssSetInputPortAcceptExprInRTW(S, 1, 1);
+  ssSetInputPortOverWritable(S, 1, 1);
+  ssSetInputPortOptimOpts(S, 1, SS_REUSABLE_AND_LOCAL);
+  ssSetInputPortRequiredContiguous(S, 1, 1);
+
+  
+  
 
   /*
    * Set the number of output ports.
    */
-  int newDataPortEnable = mxGetScalar(ssGetSFcnParam(S, 2));
-  if (!ssSetNumOutputPorts(S, newDataPortEnable?2:1))
+  if (!ssSetNumOutputPorts(S, 3))
     return;
 
   /*
    * Configure the output port 1
    */
-  if(newDataPortEnable)
-    ssSetOutputPortDataType(S, 0, SS_UINT8);
-  else
-    ssSetOutputPortDataType(S, 0, SS_INT16);
+  ssSetOutputPortDataType(S, 0, SS_DOUBLE);
   ssSetOutputPortWidth(S, 0, 1);
   ssSetOutputPortComplexSignal(S, 0, COMPLEX_NO);
   ssSetOutputPortOptimOpts(S, 0, SS_REUSABLE_AND_LOCAL);
-  ssSetOutputPortOutputExprInRTW(S, 0, 0);
-
-  if(newDataPortEnable) {
-    ssSetOutputPortDataType(S, 1, SS_UINT8);
-    ssSetOutputPortWidth(S, 1, 1);
-    ssSetOutputPortComplexSignal(S, 1, COMPLEX_NO);
-    ssSetOutputPortOptimOpts(S, 1, SS_REUSABLE_AND_LOCAL);
-    ssSetOutputPortOutputExprInRTW(S, 1, 0);
-  }
+  ssSetOutputPortOutputExprInRTW(S, 0, 1);
+  /*
+   * Configure the output port 2
+   */
+  ssSetOutputPortDataType(S, 1, SS_DOUBLE);
+  ssSetOutputPortWidth(S, 1, 1);
+  ssSetOutputPortComplexSignal(S, 1, COMPLEX_NO);
+  ssSetOutputPortOptimOpts(S, 1, SS_REUSABLE_AND_LOCAL);
+  ssSetOutputPortOutputExprInRTW(S, 1, 1);
+  /*
+   * Configure the output port 3
+   */
+  ssSetOutputPortDataType(S, 2, SS_DOUBLE);
+  ssSetOutputPortWidth(S, 2, 1);
+  ssSetOutputPortComplexSignal(S, 2, COMPLEX_NO);
+  ssSetOutputPortOptimOpts(S, 2, SS_REUSABLE_AND_LOCAL);
+  ssSetOutputPortOutputExprInRTW(S, 2, 1);
+  
   /*
    * This S-function can be used in referenced model simulating in normal mode.
    */
@@ -188,7 +219,7 @@ static void mdlInitializeSizes(SimStruct *S)
  */
 static void mdlInitializeSampleTimes(SimStruct *S)
 {
-  const double * const sampleTime = mxGetPr(SAMPLE_TIME);
+  const double * sampleTime = mxGetPr(SAMPLE_TIME);
   const size_t stArraySize = mxGetM(SAMPLE_TIME) * mxGetN(SAMPLE_TIME);
   ssSetSampleTime(S, 0, sampleTime[0]);
   if (stArraySize == 1) {
@@ -222,18 +253,27 @@ static void mdlInitializeSampleTimes(SimStruct *S)
 static void mdlSetWorkWidths(SimStruct *S)
 {
   /* Set number of run-time parameters */
-  if (!ssSetNumRunTimeParams(S, 2))
+  if (!ssSetNumRunTimeParams(S, 0))
     return;
-
-  /*
-   * Register the run-time parameters
-   */
-  ssRegDlgParamAsRunTimeParam(S, 1, 0, "SerialPort",  ssGetDataTypeId(S, "uint8"));
-  ssRegDlgParamAsRunTimeParam(S, 2, 1, "NewDataPort", ssGetDataTypeId(S, "uint8"));
 }
 
 #endif
 
+#define MDL_START
+#if defined(MDL_START)
+
+/* Function: mdlStart =====================================================
+ * Abstract:
+ *    This function is called once at start of model execution. If you
+ *    have states that should be initialized once, this is the place
+ *    to do it.
+ */
+static void mdlStart(SimStruct *S)
+{
+    UNUSED_PARAMETER(S);
+}
+
+#endif
 
 /* Function: mdlOutputs ===================================================
  * Abstract:

@@ -13,12 +13,12 @@
 %%  See the License for the specific language governing permissions and
 %%  limitations under the License.
 
-%% File : sfunar_serialRead.tlc
+%% File : BLDC_commutation.tlc
 %%
-%% Copyright 2010-2011 The MathWorks, Inc.
-%% Copyright 2014-2016 Dr.O.Hagendorf, HS Wismar
+%% Copyright 2010 The MathWorks, Inc.
+%% Copyright 2019 E.Warnicke, Dr.O.Hagendorf, HS Wismar
 
-%implements UART_serialRead "C"
+%implements BLDC_commutation "C"
 
 %include "block_common_includes.tlc"
 
@@ -27,20 +27,33 @@
 
   %% Ensure required header files are included
   %<MbedCommonBlockTypeSetup(block, system)>
+
+%endfunction
+
+
+%% Function: BlockInstanceSetup ===========================================
+%function BlockInstanceSetup(block, system) void
+
+  %<LibBlockSetIsExpressionCompliant(block)>
+
 %endfunction
 
 %% Function: Start ========================================================
 %function Start(block, system) Output
   %if !SLibCodeGenForSim()
 
+    %% %assign nPortName = LibBlockParameterValue(PortName, 0)
+    %% %assign nPinNumber = LibBlockParameterValue(PinNumber, 0)
+    %% %assign pname = "P" + FEVAL("char",nPortName+64) + "_" + FEVAL("int2str",nPinNumber-1)
+
     %assign name = FEVAL("strrep",LibGetFormattedBlockPath(block),"/","_")
     %assign name = FEVAL("strrep",name," ","_")
     %assign name = FEVAL("strrep",name,"-","_")
 
     %openfile declbuf
-    // %<Type> (UART_serialRead): '%<Name>'
-    uint8_t %<name>Data = 0;
-    %closefile declbuf 
+    // %<Type> (BLDC_commutation): '%<Name>'
+    %% DigitalInOut %<name>(%<pname>);
+    %closefile declbuf
 
     %assign srcFile = LibGetModelDotCFile()
     %<LibSetSourceFileSection(srcFile, "Declarations", declbuf)>
@@ -51,33 +64,20 @@
 
 %% Function: Outputs ======================================================
 %function Outputs(block, system) Output
-
   %if !SLibCodeGenForSim()
-    %assign newport_val = CAST("Number",LibBlockParameterValue(NewDataPort, 0))
-    %assign y1_val = LibBlockOutputSignal(0, "", "", 0)
-    %if newport_val
-      %assign y2_val = LibBlockOutputSignal(1, "", "", 0)
-    %endif
-    %assign SerialPort_val = LibBlockParameterValue(SerialPort,0)
-    %assign nameSerial = "serial" + FEVAL("int2str",SerialPort_val-1)
+    %assign u1_val = LibBlockInputSignal(0, "", "", 0)
+    %assign u2_val = LibBlockInputSignal(1, "", "", 0)
+    %assign u3_val = LibBlockInputSignal(2, "", "", 0)
+    %assign u4_val = LibBlockInputSignal(3, "", "", 0)
+    %assign u5_val = LibBlockInputSignal(4, "", "", 0)
+    %assign u6_val = LibBlockInputSignal(5, "", "", 0)
 
-    %assign name = FEVAL("strrep",LibGetFormattedBlockPath(block),"/","_")
-    %assign name = FEVAL("strrep",name," ","_")
-    %assign name = FEVAL("strrep",name,"-","_")
-
-    %if newport_val
-      if(%<nameSerial>.readable()) {
-        %<y1_val> = %<nameSerial>.getc();
-        %<y2_val> = 1;
-      } else {
-        %<y2_val> = 0;
-      }
-    %else
-      if(%<nameSerial>.readable()) {
-        %<y1_val> = (%<name>Data = %<nameSerial>.getc());
-      } else {
-        %<y1_val> = -1;
-      }
-    %endif
+    step7[0] = %<u1_val>;
+    step7[1] = %<u2_val>;
+    step7[2] = %<u3_val>;
+    step7[3] = %<u4_val>;
+    step7[4] = %<u5_val>;
+    step7[5] = %<u6_val>;
+    run(7,1);
   %endif
 %endfunction

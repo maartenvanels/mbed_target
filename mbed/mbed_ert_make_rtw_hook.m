@@ -31,6 +31,7 @@ switch hookMethod
         % Called at start of code generation process (before anything happens.)
         % Valid arguments at this stage are hookMethod, modelName, and buildArgs.
         %disp('entry');
+        tic;
         i_mbed_setup(modelName);
         %disp('entry out');
         
@@ -66,7 +67,7 @@ switch hookMethod
         % arguments are valid at this stage.
         %disp('before_make');
         i_write_mbed_files();
-        disp(sprintf(['\n### Code Format : %s'],buildOpts.codeFormat));%#ok
+        %disp(sprintf(['\n### Code Format : %s'],buildOpts.codeFormat));%#ok
         %disp('before_make out');
         
     case 'after_make'
@@ -101,6 +102,7 @@ switch hookMethod
         %fprintf('### Linker Map file <a href="matlab:edit %s">mapFile.map</a>\n', fileMap);
         
         disp(['### Successful completion of build procedure for model: ', modelName]);
+        toc
 end
 end
 
@@ -110,7 +112,7 @@ function i_mbed_setup(modelName)
 if ~i_isPilSim
     % Check that the main function will be generated using the correct .tlc file
     if bdIsLoaded(modelName) && ~i_isModelReferenceBuild(modelName)
-        requiredSetting = 'mbed_file_process.tlc';
+        requiredSetting = 'mbed_ert_file_process.tlc';
         assert(strcmp(get_param(modelName, 'ERTCustomFileTemplate'), requiredSetting),...
             'The model %s must have ERTCustomFileTemplate set to %s.', modelName, requiredSetting);
     end
@@ -141,12 +143,21 @@ end
 
 libraryversion='';
 try
-    fid=fopen(fullfile(mbed_getTargetRootPath(), 'targets', 'mbed-os', 'mbed.h'), 'r');
+%     fid=fopen(fullfile(mbed_getTargetRootPath(), 'targets', 'mbed-os', 'mbed.h'), 'r');
+%     text = textscan(fid,'%s','Delimiter','','endofline','');
+%     text = text{1}{1};
+%     fclose(fid);
+%     libraryversion = regexp(text,'MBED_LIBRARY_VERSION[\s\.=]+(\d+)','tokens');
+%     libraryversion=string(libraryversion);
+
+    fid=fopen(fullfile(mbed_getTargetRootPath(), 'targets', 'mbed-os', 'platform', 'mbed_version.h'), 'r');
     text = textscan(fid,'%s','Delimiter','','endofline','');
     text = text{1}{1};
     fclose(fid);
-    libraryversion = regexp(text,'MBED_LIBRARY_VERSION[\s\.=]+(\d+)','tokens');
-    libraryversion=string(libraryversion);
+    major = regexp(text,'MBED_MAJOR_VERSION[\s\.=]+(\d+)','tokens');
+    minor = regexp(text,'MBED_MINOR_VERSION[\s\.=]+(\d+)','tokens');
+    patch = regexp(text,'MBED_PATCH_VERSION[\s\.=]+(\d+)','tokens');
+    libraryversion=string(major) + "." + string(minor) + "." + string(patch);
 catch ME
 end
 
@@ -155,7 +166,7 @@ disp('###')
 disp('### mbed environment settings:')
 disp('###')
 fprintf('###     Name:            %s\n', mbedtarget);
-fprintf('###     Version:         %s, library version %s\n', 'Mbed-OS 5', libraryversion);
+fprintf('###     Version:         Mbed-OS v%s\n', libraryversion);
 fprintf('###     RTOS:            %s\n', get_param(bdroot,'UseMbedRTOS'));
 fprintf('###     Fixed step size: %ss\n', get_param(bdroot,'FixedStep'));
 fprintf('###     # of Make jobs:  %s\n', get_param(bdroot,'MakeJobs'));
@@ -305,7 +316,7 @@ function i_write_mbed_files()
     [~,cmdout]=system(['python ..\mbed-os\tools\project.py -m ' target ' -i simulink --source . --source ..\mbed-os --source ..\libraries']);
 
     % generate additional project config files for µVision, IAR, ...
-    additionalProjectFiles = get_param(bdroot,'MbedAddProjectFiles');
+    additionalProjectFiles = 'uvision6'; % get_param(bdroot,'MbedAddProjectFiles');
     if ~isequal(additionalProjectFiles,'none')
       [~,cmdout]=system(['python ..\mbed-os\tools\project.py -m ' target ' -i ' additionalProjectFiles ' --source . --source ..\mbed-os --source ..\libraries']);
     end
